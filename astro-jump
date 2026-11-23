@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Astro Jump</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #070913;
+      --panel: rgba(17, 23, 45, 0.9);
+      --border: rgba(120, 150, 255, 0.22);
+      --text: #f4f7ff;
+      --muted: #9aa7cc;
+      --accent: #6c8cff;
+      --accent2: #22e5b5;
+      --gold: #ffcb47;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at top, #131c3d 0%, var(--bg) 65%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 6px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .stat-val {
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      background: var(--panel);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 4px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .view {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    .game-wrap {
+      position: relative;
+      background: #090d1f;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      height: 430px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .hud-overlay {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 14px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+      pointer-events: none;
+    }
+
+    .start-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 9, 19, 0.72);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .start-overlay.hidden {
+      display: none;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #4a6cf7);
+    }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .btn.gold {
+      background: linear-gradient(135deg, #f59e0b, var(--gold));
+      color: #141414;
+    }
+
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .gifts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .gift-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .gift-title {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .gift-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .ref-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 9px;
+      font-size: 12px;
+      word-break: break-all;
+      color: var(--accent2);
+    }
+
+    .chat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 330px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .msg {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .msg-author {
+      font-weight: 700;
+      color: var(--accent2);
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .chat-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1b2447;
+      border: 1px solid var(--accent);
+      color: #fff;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      z-index: 99;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="stat">
+        <div class="stat-label">Монеты</div>
+        <div class="stat-val" id="statCoins">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Stars</div>
+        <div class="stat-val" id="statStars">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Рекорд</div>
+        <div class="stat-val" id="statBest">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Друзья</div>
+        <div class="stat-val" id="statFriends">0</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="game">🚀 Игра</button>
+      <button class="tab-btn" data-tab="gifts">🎁 Подарки</button>
+      <button class="tab-btn" data-tab="ref">👥 Друзья</button>
+      <button class="tab-btn" data-tab="chat">💬 Чат</button>
+    </div>
+
+    <div class="view active" id="view-game">
+      <div class="game-wrap">
+        <canvas id="gameCanvas" width="440" height="520"></canvas>
+        <div class="hud-overlay">
+          <div>Очки: <span id="hudScore">0</span></div>
+          <div>Монеты забега: <span id="hudCoins">0</span></div>
+        </div>
+        <div class="start-overlay" id="startOverlay">
+          <div style="font-size: 20px; font-weight: 800;">Astro Jump</div>
+          <div style="font-size: 13px; color: var(--muted);" id="overlayHint">
+            Прыгай по платформам и собирай монеты. Управляй касанием или кнопками ниже.
+          </div>
+          <button class="btn" id="startGameBtn">Запустить полёт</button>
+        </div>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" id="btnLeft">⬅️ Влево</button>
+        <button class="ctrl-btn" id="btnRight">Вправо ➡️</button>
+      </div>
+    </div>
+
+    <div class="view" id="view-gifts">
+      <div class="card">
+        <div style="font-size: 13px; color: var(--muted);">
+          Обменивай накопленные монеты на подарки с автоотправкой в Telegram.
+        </div>
+        <div class="gifts-grid" id="giftsGrid"></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-ref">
+      <div class="card">
+        <div style="font-weight: 700;">Реферальная программа</div>
+        <div style="font-size: 13px; color: var(--muted);">
+          +100 монет за каждого приглашённого друга и дополнительно +500 монет за каждые 5 друзей.
+        </div>
+        <div class="ref-box" id="refLinkBox">Загрузка ссылки...</div>
+        <div class="controls-row">
+          <button class="btn" id="copyRefBtn">Скопировать</button>
+          <button class="btn secondary" id="shareRefBtn">Поделиться</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-chat">
+      <div class="card" style="flex: 1;">
+        <div style="font-weight: 700;">Чат игроков</div>
+        <div class="chat-list" id="chatList"></div>
+        <form class="chat-form" id="chatForm">
+          <input class="chat-input" id="chatInput" type="text" maxlength="280" placeholder="Написать сообщение..." />
+          <button class="btn" type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API_BASE = "https://onyx-otter.hostedbyfps.com";
+
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
+    const USER_ID = tgUser && tgUser.id ? Number(tgUser.id) : 10001;
+    const USERNAME = (tgUser && (tgUser.username || tgUser.first_name)) || "Player";
+
+    const GIFTS = [
+      { key: "heart", title: "Сердце", coins: 40000, stars: 15 },
+      { key: "bear", title: "Мишка", coins: 40000, stars: 15 },
+      { key: "gift", title: "Подарок", coins: 65000, stars: 25 },
+      { key: "rose", title: "Роза", coins: 65000, stars: 25 },
+      { key: "cake", title: "Торт", coins: 130000, stars: 50 },
+      { key: "bouquet", title: "Букет", coins: 130000, stars: 50 },
+      { key: "rocket", title: "Ракета", coins: 130000, stars: 50 },
+      { key: "champagne", title: "Шампанское", coins: 130000, stars: 50 },
+      { key: "ring", title: "Кольцо", coins: 260000, stars: 100 },
+      { key: "diamond", title: "Бриллиант", coins: 260000, stars: 100 },
+    ];
+
+    let stateUser = {
+      user_id: USER_ID,
+      username: USERNAME,
+      coins: 0,
+      stars: 0,
+      best_score: 0,
+      friends: 0,
+    };
+    let refLink = "";
+
+    const toastEl = document.getElementById("toast");
+    function showToast(text) {
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toastEl.classList.remove("show"), 2400);
+    }
+
+    function renderStats() {
+      document.getElementById("statCoins").textContent = Number(stateUser.coins || 0).toLocaleString("ru-RU");
+      document.getElementById("statStars").textContent = Number(stateUser.stars || 0).toLocaleString("ru-RU");
+      document.getElementById("statBest").textContent = Number(stateUser.best_score || 0).toLocaleString("ru-RU");
+      document.getElementById("statFriends").textContent = Number(stateUser.friends || 0).toLocaleString("ru-RU");
+      document.getElementById("refLinkBox").textContent = refLink || "Ссылка появится после загрузки профиля";
+      renderGifts();
+    }
+
+    async function fetchState() {
+      try {
+        const q = new URLSearchParams({ user_id: String(USER_ID), username: USERNAME });
+        const r = await fetch(`${API_BASE}/api/state?${q.toString()}`);
+        const data = await r.json();
+        if (data.ok && data.user) {
+          stateUser = data.user;
+          refLink = data.ref_link || "";
+          renderStats();
+        }
+      } catch (_) {}
+    }
+
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${tab}`));
+        if (tab === "chat") loadChat();
+        if (tab === "gifts" || tab === "ref") fetchState();
+      });
+    });
+
+    function renderGifts() {
+      const grid = document.getElementById("giftsGrid");
+      grid.innerHTML = "";
+      GIFTS.forEach((g) => {
+        const el = document.createElement("div");
+        el.className = "gift-item";
+        el.innerHTML = `
+          <div class="gift-title">${g.title}</div>
+          <div class="gift-meta">${g.coins.toLocaleString("ru-RU")} монет · ~${g.stars} ⭐️</div>
+          <button class="btn gold" style="padding: 8px; font-size: 12px;">Обменять</button>
+        `;
+        el.querySelector("button").addEventListener("click", () => buyGift(g.key));
+        grid.appendChild(el);
+      });
+    }
+
+    async function buyGift(giftKey) {
+      try {
+        const r = await fetch(`${API_BASE}/api/buy-gift`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: USER_ID, username: USERNAME, gift_key: giftKey }),
+        });
+        const data = await r.json();
+        if (data.user) stateUser = data.user;
+        renderStats();
+        showToast(data.message || (data.ok ? "Готово!" : "Ошибка обмена"));
+      } catch (_) {
+        showToast("Ошибка сети при обмене подарка");
+      }
+    }
+
+    document.getElementById("copyRefBtn").addEventListener("click", async () => {
+      if (!refLink) return showToast("Ссылка ещё не готова");
+      try {
+        await navigator.clipboard.writeText(refLink);
+        showToast("Ссылка скопирована");
+      } catch (_) {
+        showToast(refLink);
+      }
+    });
+
+    document.getElementById("shareRefBtn").addEventListener("click", () => {
+      if (!refLink) return showToast("Ссылка ещё не готова");
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("Залетай в Astro Jump!")}`;
+      if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(shareUrl);
+      } else {
+        window.open(shareUrl, "_blank");
+      }
+    });
+
+    async function loadChat() {
+      try {
+        const r = await fetch(`${API_BASE}/api/chat`);
+        const data = await r.json();
+        if (!data.ok || !Array.isArray(data.messages)) return;
+        const list = document.getElementById("chatList");
+        list.innerHTML = "";
+        data.messages.forEach((m) => {
+          const item = document.createElement("div");
+          item.className = "msg";
+          const author = document.createElement("div");
+          author.className = "msg-author";
+          author.textContent = m.sender || "Игрок";
+          const body = document.createElement("div");
+          body.textContent = m.text || "";
+          item.appendChild(author);
+          item.appendChild(body);
+          list.appendChild(item);
+        });
+        list.scrollTop = list.scrollHeight;
+      } catch (_) {}
+    }
+
+    document.getElementById("chatForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("chatInput");
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      try {
+        const r = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: USER_ID, sender: USERNAME, text }),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          await loadChat();
+        } else {
+          showToast(data.error || "Не удалось отправить");
+        }
+      } catch (_) {
+        showToast("Ошибка отправки сообщения");
+      }
+    });
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const hudScore = document.getElementById("hudScore");
+    const hudCoins = document.getElementById("hudCoins");
+    const startOverlay = document.getElementById("startOverlay");
+    const overlayHint = document.getElementById("overlayHint");
+    const startGameBtn = document.getElementById("startGameBtn");
+
+    let running = false;
+    let moveLeft = false;
+    let moveRight = false;
+    let score = 0;
+    let runCoins = 0;
+    let maxHeightReached = 0;
+
+    const player = { x: 204, y: 400, w: 32, h: 32, vx: 0, vy: -9 };
+    let platforms = [];
+    let coinsList = [];
+
+    function resetGame() {
+      score = 0;
+      runCoins = 0;
+      maxHeightReached = 0;
+      player.x = canvas.width / 2 - player.w / 2;
+      player.y = canvas.height - 90;
+      player.vx = 0;
+      player.vy = -10.5;
+      platforms = [{ x: canvas.width / 2 - 45, y: canvas.height - 50, w: 90, h: 12 }];
+      coinsList = [];
+
+      for (let i = 1; i < 8; i++) {
+        const py = canvas.height - 50 - i * 66;
+        const px = Math.random() * (canvas.width - 80);
+        platforms.push({ x: px, y: py, w: 80, h: 12 });
+        if (Math.random() < 0.55) {
+          coinsList.push({ x: px + 40, y: py - 22, r: 8, taken: false });
+        }
+      }
+      hudScore.textContent = "0";
+      hudCoins.textContent = "0";
+    }
+
+    async function finishGame() {
+      running = false;
+      const finalScore = Math.floor(score);
+      const finalCoins = Math.floor(runCoins);
+      overlayHint.textContent = `Полёт завершён! Очки: ${finalScore}, монеты: +${finalCoins}`;
+      startGameBtn.textContent = "Сыграть ещё раз";
+      startOverlay.classList.remove("hidden");
+
+      if (finalScore > 0 || finalCoins > 0) {
+        try {
+          const r = await fetch(`${API_BASE}/api/run-finish`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: USER_ID,
+              username: USERNAME,
+              score: finalScore,
+              coins: finalCoins,
+            }),
+          });
+          const data = await r.json();
+          if (data.ok && data.user) {
+            stateUser = data.user;
+            renderStats();
+          }
+        } catch (_) {}
+      }
+    }
+
+    startGameBtn.addEventListener("click", () => {
+      resetGame();
+      startOverlay.classList.add("hidden");
+      running = true;
+    });
+
+    const btnLeft = document.getElementById("btnLeft");
+    const btnRight = document.getElementById("btnRight");
+    ["pointerdown", "touchstart"].forEach((ev) => {
+      btnLeft.addEventListener(ev, () => (moveLeft = true));
+      btnRight.addEventListener(ev, () => (moveRight = true));
+    });
+    ["pointerup", "pointerleave", "touchend", "touchcancel"].forEach((ev) => {
+      btnLeft.addEventListener(ev, () => (moveLeft = false));
+      btnRight.addEventListener(ev, () => (moveRight = false));
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") moveLeft = true;
+      if (e.key === "ArrowRight" || e.key === "d") moveRight = true;
+    });
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") moveLeft = false;
+      if (e.key === "ArrowRight" || e.key === "d") moveRight = false;
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!running) return;
+      const rect = canvas.getBoundingClientRect();
+      const relX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+      player.x = Math.max(0, Math.min(canvas.width - player.w, relX - player.w / 2));
+    });
+
+    function update() {
+      if (!running) return;
+
+      const speed = 5.4;
+      if (moveLeft && !moveRight) player.vx = -speed;
+      else if (moveRight && !moveLeft) player.vx = speed;
+      else player.vx *= 0.78;
+
+      player.x += player.vx;
+      if (player.x < -player.w) player.x = canvas.width;
+      if (player.x > canvas.        width) player.x = -player.w;
+
+      player.vy += 0.36;
+      player.y += player.vy;
+
+      if (player.vy > 0) {
+        for (const p of platforms) {
+          const hitX = player.x + player.w > p.x + 4 && player.x < p.x + p.w - 4;
+          const hitY = player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + player.vy + 2;
+          if (hitX && hitY) {
+            player.vy = -10.8;
+            break;
+          }
+        }
+      }
+
+      const scrollThreshold = canvas.height * 0.42;
+      if (player.y < scrollThreshold) {
+        const diff = scrollThreshold - player.y;
+        player.y = scrollThreshold;
+        maxHeightReached += diff;
+        score = Math.floor(maxHeightReached / 8);
+        hudScore.textContent = String(score);
+
+        for (const p of platforms) p.y += diff;
+        for (const c of coinsList) c.y += diff;
+
+        platforms = platforms.filter((p) => p.y < canvas.height + 30);
+        coinsList = coinsList.filter((c) => c.y < canvas.height + 30 && !c.taken);
+
+        while (platforms.length < 8) {
+          const highestY = Math.min(...platforms.map((p) => p.y));
+          const py = highestY - (58 + Math.random() * 20);
+          const px = Math.random() * (canvas.width - 80);
+          platforms.push({ x: px, y: py, w: 80, h: 12 });
+          if (Math.random() < 0.6) {
+            coinsList.push({ x: px + 40, y: py - 22, r: 8, taken: false });
+          }
+        }
+      }
+
+      for (const c of coinsList) {
+        if (c.taken) continue;
+        const cx = player.x + player.w / 2;
+        const cy = player.y + player.h / 2;
+        const dist = Math.hypot(cx - c.x, cy - c.y);
+        if (dist < c.r + 18) {
+          c.taken = true;
+          runCoins += 10;
+          hudCoins.textContent = String(runCoins);
+        }
+      }
+
+      if (player.y > canvas.height + 30) {
+        finishGame();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      for (let i = 0; i < 24; i++) {
+        const sx = (i * 97) % canvas.width;
+        const sy = (i * 61 + Math.floor(maxHeightReached * 0.15)) % canvas.height;
+        ctx.fillRect(sx, sy, 2, 2);
+      }
+
+      for (const p of platforms) {
+        ctx.fillStyle = "#22e5b5";
+        ctx.beginPath();
+        ctx.roundRect(p.x, p.y, p.w, p.h, 6);
+        ctx.fill();
+      }
+
+      for (const c of coinsList) {
+        if (c.taken) continue;
+        ctx.fillStyle = "#ffcb47";
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#6c8cff";
+      ctx.beginPath();
+      ctx.roundRect(player.x, player.y, player.w, player.h, 8);
+      ctx.fill();
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    resetGame();
+    fetchState();
+    loop();
+  </script>
+</body>
+</html>
